@@ -574,6 +574,8 @@ Recommendations for a specific container (use the recommendation UUID):
 GET /api/cost-management/v1/recommendations/openshift/{recommendation_uuid}
 ----
 
+Legacy aliases (identical behavior): `GET /api/cost-management/v1/recommendations/openshift/container`, `GET .../openshift/container/{recommendation_uuid}`.
+
 The detail response includes per-term (short/medium/long) recommendations for two models:
 
 * **Cost model**: optimizes for resource savings (p60 CPU / p95 memory)
