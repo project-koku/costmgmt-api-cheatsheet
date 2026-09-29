@@ -1,0 +1,27 @@
+meta {
+  name: HCP recommendations list
+  type: http
+  seq: 232
+}
+
+get {
+  url: {{baseURL}}/recommendations/openshift/hcp?limit=20&offset=0
+  body: none
+  auth: inherit
+}
+
+headers {
+  x-rh-identity: {{xRhIdentity}}
+}
+
+docs {
+  Hosted control-plane recommendations: HCP-namespaced container rows
+  (associated + incomplete:true unassociated). App-namespace rows never appear.
+  Each item carries hosted_cluster_id (omitted when unassociated) and
+  incomplete. Requires the hcp plugin.
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

@@ -765,6 +765,24 @@ When `filter[tag:key]=value` is combined with RBAC-scoped identity, results are 
 intersection of allowed clusters/namespaces AND tag matches. A tag filter scoped to a
 cluster outside RBAC scope returns HTTP 200 with an empty list (not 403).
 
+==== Hosted control-plane recommendations
+
+Dedicated surface for HyperShift control-plane rightsizing (requires the `hcp` plugin).
+Lists HCP-namespaced container rows only — associated rows carry `hosted_cluster_id`,
+unassociated HCP rows show `incomplete: true`:
+
+----
+GET /api/cost-management/v1/recommendations/openshift/hcp
+GET /api/cost-management/v1/recommendations/openshift/hcp?filter[hosted_cluster_id]=HOSTED_CLUSTER_ID
+GET /api/cost-management/v1/recommendations/openshift/hcp?group_by[hosted_cluster_id]=*
+GET /api/cost-management/v1/recommendations/openshift/hcp/:recommendation-id
+----
+
+Unknown hosted IDs return HTTP 200 with an empty list (not 404); non-HCP detail IDs
+return 404. Like tag filters, the hosted filter applies after RBAC scoping and can
+never grant access outside the caller's scope. Group-by rows carry per-hosted counts
+(associated rows only; per-HC savings rollup is not yet available).
+
 ==== Pagination
 
 Offset pagination (default):

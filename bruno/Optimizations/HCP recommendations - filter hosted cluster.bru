@@ -1,0 +1,33 @@
+meta {
+  name: HCP recommendations - filter hosted cluster
+  type: http
+  seq: 233
+}
+
+get {
+  url: {{baseURL}}/recommendations/openshift/hcp?filter[hosted_cluster_id]=d5d31999-89ed-4c13-b5e8-c9193f62e630&limit=20&offset=0
+  body: none
+  auth: inherit
+}
+
+params:query {
+  filter[hosted_cluster_id]: d5d31999-89ed-4c13-b5e8-c9193f62e630
+  limit: 20
+  offset: 0
+}
+
+headers {
+  x-rh-identity: {{xRhIdentity}}
+}
+
+docs {
+  Narrow HCP recommendations to one hosted cluster by its frozen
+  HostedCluster ID. Unknown IDs return an empty 200 (never 404). The filter
+  applies after org/cluster/namespace RBAC: it can never grant access to
+  management rows outside the caller's scope.
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

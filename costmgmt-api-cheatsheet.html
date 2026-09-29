@@ -1081,6 +1081,9 @@ POST /api/cost-management/v1/internal/backfill-gpu-timeslicing?org_id=1234567&am
 </div>
 </div>
 <div class="paragraph">
+<p>Legacy aliases (identical behavior): <code>GET /api/cost-management/v1/recommendations/openshift/container</code>, <code>GET &#8230;&#8203;/openshift/container/{recommendation_uuid}</code>.</p>
+</div>
+<div class="paragraph">
 <p>The detail response includes per-term (short/medium/long) recommendations for two models:</p>
 </div>
 <div class="ulist">
@@ -1379,6 +1382,28 @@ It is NOT supported on per-resource detail endpoints (<code>GET &#8230;&#8203;/c
 intersection of allowed clusters/namespaces AND tag matches. A tag filter scoped to a
 cluster outside RBAC scope returns HTTP 200 with an empty list (not 403).</p>
 </div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_hosted_control_plane_recommendations">Hosted control-plane recommendations</h4>
+<div class="paragraph">
+<p>Dedicated surface for HyperShift control-plane rightsizing (requires the <code>hcp</code> plugin).
+Lists HCP-namespaced container rows only — associated rows carry <code>hosted_cluster_id</code>,
+unassociated HCP rows show <code>incomplete: true</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>GET /api/cost-management/v1/recommendations/openshift/hcp
+GET /api/cost-management/v1/recommendations/openshift/hcp?filter[hosted_cluster_id]=HOSTED_CLUSTER_ID
+GET /api/cost-management/v1/recommendations/openshift/hcp?group_by[hosted_cluster_id]=*
+GET /api/cost-management/v1/recommendations/openshift/hcp/:recommendation-id</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Unknown hosted IDs return HTTP 200 with an empty list (not 404); non-HCP detail IDs
+return 404. Like tag filters, the hosted filter applies after RBAC scoping and can
+never grant access outside the caller&#8217;s scope. Group-by rows carry per-hosted counts
+(associated rows only; per-HC savings rollup is not yet available).</p>
 </div>
 </div>
 <div class="sect3">
@@ -1955,6 +1980,22 @@ GET /api/cost-management/v1/recommendations/openshift/gpu/timeslicing?format=csv
 </div>
 <div class="paragraph">
 <p><strong>Cold-start signal:</strong> <code>meta.data_days_available</code> (integer) reports distinct days of <code>daily_node_digests</code> data for the queried cluster(s). Compare against <code>min_data_days</code> from <code>GET &#8230;&#8203;/settings/terms?recommendation_type=gpu</code> to distinguish cold-start (insufficient data) from genuine "no recommendations".</p>
+</div>
+<div class="sect4">
+<h5 id="_gpu_time_slicing_detail">GPU time-slicing detail</h5>
+<div class="paragraph">
+<p>Peak hours replica sizing lives on the <strong>detail</strong> route, not the list:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>GET /api/cost-management/v1/recommendations/openshift/gpu/timeslicing/{node}
+GET /api/cost-management/v1/recommendations/openshift/gpu/timeslicing/{node}?cluster_uuid=&lt;cluster_uuid&gt;
+GET /api/cost-management/v1/recommendations/openshift/gpu/timeslicing/{node}?cluster_uuid=&lt;cluster_uuid&gt;&amp;filter[gpu_model]=T4&amp;filter[term]=medium</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Requires an <strong>org ⊕ cluster</strong> business-hours schedule (namespace-only schedules omit the nest). When nested <code>business_hours.recommended_replicas</code> is present, <code>business_hours.notifications</code> includes code <strong>81</strong> (<code>GPU_TS_BH_CLUSTER_WINDOW</code>) — overnight training and off-hours bursts are excluded. Parent <code>notification_codes</code> stay all-hours (<strong>36</strong>). Code <strong>81</strong> is not on the list, history, GPU summary <code>timeslicing.count</code>, or parent codes. Reason-only insufficient-data nests omit 81.</p>
+</div>
 </div>
 <div class="sect4">
 <h5 id="_gpu_time_slicing_history">GPU time-slicing history</h5>
@@ -4830,7 +4871,7 @@ GET /api/cost-management/v1/reports/aws/costs/?group_by[account]=*&amp;exclude[a
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-08-27 03:22:11 +0200
+Last updated 2026-09-29 20:53:23 +0200
 </div>
 </div>
 </body>
