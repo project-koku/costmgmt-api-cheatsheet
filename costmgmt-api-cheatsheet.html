@@ -1403,7 +1403,9 @@ GET /api/cost-management/v1/recommendations/openshift/hcp/:recommendation-id</pr
 <p>Unknown hosted IDs return HTTP 200 with an empty list (not 404); non-HCP detail IDs
 return 404. Like tag filters, the hosted filter applies after RBAC scoping and can
 never grant access outside the caller&#8217;s scope. Group-by rows carry per-hosted counts
-(associated rows only; per-HC savings rollup is not yet available).</p>
+(associated rows only) plus <code>estimated_savings</code> (<code>{"value", "units"}</code> summed over
+pinned short/cost rows, converted to display currency); <code>meta.currency</code> names the
+currency.</p>
 </div>
 </div>
 <div class="sect3">
@@ -2952,7 +2954,57 @@ DELETE /api/cost-management/v1/recommendations/openshift/settings/snapshot</pre>
 </div>
 </div>
 <div class="sect3">
-<h4 id="_notification_codes_3">Notification codes</h4>
+<h4 id="_hcp_correlation_settings">HCP correlation settings</h4>
+<div class="paragraph">
+<p>Thin cross-plane correlator policy (requires the <code>hcp</code> plugin; when disabled the route returns <code>404</code>).
+PUT replaces the whole domain — all fields required — and values take effect on the
+next hourly correlator run (no recalculation; at most one cycle of delay):</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>GET /api/cost-management/v1/recommendations/openshift/settings/hcp-correlation
+PUT /api/cost-management/v1/recommendations/openshift/settings/hcp-correlation
+DELETE /api/cost-management/v1/recommendations/openshift/settings/hcp-correlation</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>| Setting | Env var (locks value) | Default | Description |
+|---------|----------------------|---------|-------------|
+| <code>h_p99_threshold_s</code> | <code>ROS_HCP_H_P99_THRESHOLD_S</code> | 0.3 | Absolute hosted API p99 floor (s); the H gate is <code>max(this, baseline_multiple x 7-day median)</code> |
+| <code>h_baseline_multiple</code> | <code>ROS_HCP_H_BASELINE_MULTIPLE</code> | 3 | Relative leg of the H gate against the 7-day median p99 |
+| <code>c_cpu_pct</code> | <code>ROS_HCP_C_CPU_PCT</code> | 80 | HCP-namespace trailing-day CPU usage/requests (%) firing C |
+| <code>c_etcd_p99_s</code> | <code>ROS_HCP_C_ETCD_P99_S</code> | 0.01 | etcd fsync p99 (s); stored and validated, strengthens C when wired |
+| <code>window_h</code> | <code>ROS_HCP_WINDOW_HOURS</code> | 1 | Hourly-aligned correlation window (h) |
+| <code>skew_m</code> | <code>ROS_HCP_SKEW_MINUTES</code> | 5 | Cross-plane clock-skew tolerance (minutes) |
+| <code>freshness_h</code> | <code>ROS_HCP_FRESHNESS_HOURS</code> | 2 | Evidence freshness (h); must cover the window (<code>freshness_h &gt;= window_h</code>) |
+| <code>expiry_h</code> | <code>ROS_HCP_EXPIRY_HOURS</code> | 24 | Advisory expiry (h); expired advisories never render as current |</p>
+</div>
+<div class="paragraph">
+<p>Example GET/PUT body:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-json" data-lang="json">{
+  "h_p99_threshold_s": 0.3,
+  "h_baseline_multiple": 3,
+  "c_cpu_pct": 80,
+  "c_etcd_p99_s": 0.01,
+  "window_h": 1,
+  "skew_m": 5,
+  "freshness_h": 2,
+  "expiry_h": 24,
+  "locked_fields": []
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>PUT validation: <code>h_p99_threshold_s</code> 0.001–3600; <code>h_baseline_multiple</code> 1–100;
+<code>c_cpu_pct</code> 1–100; <code>c_etcd_p99_s</code> 0.001–60; <code>window_h</code> 1–168; <code>skew_m</code> 0–60;
+<code>freshness_h</code> 1–720 and <code>&gt;= window_h</code>; <code>expiry_h</code> 1–720. Unknown fields are
+rejected; env-locked fields return 403 with offending names. Fixed methodological
+floors (not tunable, no env var): 30-minute minimum data per window and 36-hour
+node-recency calibration for N. DELETE returns <strong>204</strong> and removes per-org overrides.</p>
+</div>
 <div class="paragraph">
 <p>Filter the catalog with
 <code>GET /api/cost-management/v1/recommendations/openshift/notification-codes/?filter[plugin]=snapshot</code>.</p>
@@ -4871,7 +4923,7 @@ GET /api/cost-management/v1/reports/aws/costs/?group_by[account]=*&amp;exclude[a
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-09-29 20:53:23 +0200
+Last updated 2026-10-01 13:07:11 +0200
 </div>
 </div>
 </body>

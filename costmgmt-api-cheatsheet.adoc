@@ -781,7 +781,9 @@ GET /api/cost-management/v1/recommendations/openshift/hcp/:recommendation-id
 Unknown hosted IDs return HTTP 200 with an empty list (not 404); non-HCP detail IDs
 return 404. Like tag filters, the hosted filter applies after RBAC scoping and can
 never grant access outside the caller's scope. Group-by rows carry per-hosted counts
-(associated rows only; per-HC savings rollup is not yet available).
+(associated rows only) plus `estimated_savings` (`{"value", "units"}` summed over
+pinned short/cost rows, converted to display currency); `meta.currency` names the
+currency.
 
 ==== Pagination
 
@@ -1786,7 +1788,52 @@ Example GET/PUT body:
 
 DELETE returns **204** and removes per-org overrides (falls back to env or compiled defaults).
 
-==== Notification codes
+==== HCP correlation settings
+
+Thin cross-plane correlator policy (requires the `hcp` plugin; when disabled the route returns `404`).
+PUT replaces the whole domain — all fields required — and values take effect on the
+next hourly correlator run (no recalculation; at most one cycle of delay):
+
+----
+GET /api/cost-management/v1/recommendations/openshift/settings/hcp-correlation
+PUT /api/cost-management/v1/recommendations/openshift/settings/hcp-correlation
+DELETE /api/cost-management/v1/recommendations/openshift/settings/hcp-correlation
+----
+
+| Setting | Env var (locks value) | Default | Description |
+|---------|----------------------|---------|-------------|
+| `h_p99_threshold_s` | `ROS_HCP_H_P99_THRESHOLD_S` | 0.3 | Absolute hosted API p99 floor (s); the H gate is `max(this, baseline_multiple x 7-day median)` |
+| `h_baseline_multiple` | `ROS_HCP_H_BASELINE_MULTIPLE` | 3 | Relative leg of the H gate against the 7-day median p99 |
+| `c_cpu_pct` | `ROS_HCP_C_CPU_PCT` | 80 | HCP-namespace trailing-day CPU usage/requests (%) firing C |
+| `c_etcd_p99_s` | `ROS_HCP_C_ETCD_P99_S` | 0.01 | etcd fsync p99 (s); stored and validated, strengthens C when wired |
+| `window_h` | `ROS_HCP_WINDOW_HOURS` | 1 | Hourly-aligned correlation window (h) |
+| `skew_m` | `ROS_HCP_SKEW_MINUTES` | 5 | Cross-plane clock-skew tolerance (minutes) |
+| `freshness_h` | `ROS_HCP_FRESHNESS_HOURS` | 2 | Evidence freshness (h); must cover the window (`freshness_h >= window_h`) |
+| `expiry_h` | `ROS_HCP_EXPIRY_HOURS` | 24 | Advisory expiry (h); expired advisories never render as current |
+
+Example GET/PUT body:
+
+[source,json]
+----
+{
+  "h_p99_threshold_s": 0.3,
+  "h_baseline_multiple": 3,
+  "c_cpu_pct": 80,
+  "c_etcd_p99_s": 0.01,
+  "window_h": 1,
+  "skew_m": 5,
+  "freshness_h": 2,
+  "expiry_h": 24,
+  "locked_fields": []
+}
+----
+
+PUT validation: `h_p99_threshold_s` 0.001–3600; `h_baseline_multiple` 1–100;
+`c_cpu_pct` 1–100; `c_etcd_p99_s` 0.001–60; `window_h` 1–168; `skew_m` 0–60;
+`freshness_h` 1–720 and `>= window_h`; `expiry_h` 1–720. Unknown fields are
+rejected; env-locked fields return 403 with offending names. Fixed methodological
+floors (not tunable, no env var): 30-minute minimum data per window and 36-hour
+node-recency calibration for N. DELETE returns **204** and removes per-org overrides.
 
 Filter the catalog with
 `GET /api/cost-management/v1/recommendations/openshift/notification-codes/?filter[plugin]=snapshot`.

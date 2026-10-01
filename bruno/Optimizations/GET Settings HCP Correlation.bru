@@ -1,0 +1,24 @@
+meta {
+  name: GET Settings HCP Correlation
+  type: http
+  seq: 235
+}
+
+get {
+  url: {{baseURL}}/recommendations/openshift/settings/hcp-correlation
+  body: none
+  auth: inherit
+}
+
+headers {
+  x-rh-identity: {{xRhIdentity}}
+}
+
+docs {
+  Read HCP correlator policy and locked_fields (env-locked values cannot be changed via PUT). Values take effect on the next hourly correlator run.
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

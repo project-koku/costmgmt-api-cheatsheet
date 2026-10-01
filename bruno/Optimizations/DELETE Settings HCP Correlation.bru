@@ -1,0 +1,24 @@
+meta {
+  name: DELETE Settings HCP Correlation
+  type: http
+  seq: 237
+}
+
+delete {
+  url: {{baseURL}}/recommendations/openshift/settings/hcp-correlation
+  body: none
+  auth: inherit
+}
+
+headers {
+  x-rh-identity: {{xRhIdentity}}
+}
+
+docs {
+  Remove per-org HCP correlator policy overrides (falls back to ROS_HCP_* env or defaults 0.3/3/80/0.01/1/5/2/24).
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

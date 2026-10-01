@@ -16,9 +16,10 @@ headers {
 
 docs {
   Aggregate HCP recommendations per hosted cluster. Each row includes
-  hosted_cluster_id and count (short/cost representative rows). Only
-  associated rows appear; unassociated rows are excluded. Per-HC savings
-  rollup is not yet available.
+  hosted_cluster_id, count (short/cost representative rows), and
+  estimated_savings ({value, units} summed over pinned rows in display
+  currency; meta.currency names the currency). Only associated rows appear;
+  unassociated rows are excluded.
 }
 
 settings {

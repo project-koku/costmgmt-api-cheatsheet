@@ -1,0 +1,40 @@
+meta {
+  name: PUT Settings HCP Correlation
+  type: http
+  seq: 236
+}
+
+put {
+  url: {{baseURL}}/recommendations/openshift/settings/hcp-correlation
+  body: json
+  auth: inherit
+}
+
+headers {
+  x-rh-identity: {{xRhIdentity}}
+  content-type: application/json
+}
+
+body:json {
+  {
+    "h_p99_threshold_s": 0.35,
+    "h_baseline_multiple": 4,
+    "c_cpu_pct": 85,
+    "c_etcd_p99_s": 0.02,
+    "window_h": 2,
+    "skew_m": 10,
+    "freshness_h": 4,
+    "expiry_h": 48
+  }
+}
+
+docs {
+  Replace the whole HCP correlator policy domain (all fields required).
+  freshness_h must cover window_h. Locked fields from GET are rejected
+  with 403. Use DELETE to restore defaults.
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
