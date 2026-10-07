@@ -2977,7 +2977,12 @@ DELETE /api/cost-management/v1/recommendations/openshift/settings/hcp-correlatio
 | <code>window_h</code> | <code>ROS_HCP_WINDOW_HOURS</code> | 1 | Hourly-aligned correlation window (h) |
 | <code>skew_m</code> | <code>ROS_HCP_SKEW_MINUTES</code> | 5 | Cross-plane clock-skew tolerance (minutes) |
 | <code>freshness_h</code> | <code>ROS_HCP_FRESHNESS_HOURS</code> | 2 | Evidence freshness (h); must cover the window (<code>freshness_h &gt;= window_h</code>) |
-| <code>expiry_h</code> | <code>ROS_HCP_EXPIRY_HOURS</code> | 24 | Advisory expiry (h); expired advisories never render as current |</p>
+| <code>expiry_h</code> | <code>ROS_HCP_EXPIRY_HOURS</code> | 24 | Advisory expiry (h); expired advisories never render as current |
+| <code>z_idle_req_per_day</code> | <code>ROS_HCP_ZOMBIE_IDLE_REQ_PER_DAY</code> | 100 | DEPRECATED zombie idle threshold (accepted, unread — do not tune) |
+| <code>z_idle_cpu_floor_mc</code> | <code>ROS_HCP_ZOMBIE_IDLE_CPU_FLOOR_MC</code> | 10 | Daily per-workload CPU (mC) counting as active; discouraged to tune |
+| <code>z_short_window_days</code> | <code>ROS_HCP_ZOMBIE_SHORT_WINDOW_DAYS</code> | 3 | Pool-zero fast-lane window (d); validated ≤ idle window |
+| <code>z_short_required_days</code> | <code>ROS_HCP_ZOMBIE_SHORT_REQUIRED_DAYS</code> | 3 | Covered pool-evidence days; validated ≤ short window |
+| <code>z_idle_window_days</code> | <code>ROS_HCP_ZOMBIE_IDLE_WINDOW_DAYS</code> | 14 | Standard idle window (d); Christmas-docs apply — shorten with care |</p>
 </div>
 <div class="paragraph">
 <p>Example GET/PUT body:</p>
@@ -2993,6 +2998,11 @@ DELETE /api/cost-management/v1/recommendations/openshift/settings/hcp-correlatio
   "skew_m": 5,
   "freshness_h": 2,
   "expiry_h": 24,
+  "z_idle_req_per_day": 100,
+  "z_idle_cpu_floor_mc": 10,
+  "z_short_window_days": 3,
+  "z_short_required_days": 3,
+  "z_idle_window_days": 14,
   "locked_fields": []
 }</code></pre>
 </div>
@@ -3000,7 +3010,7 @@ DELETE /api/cost-management/v1/recommendations/openshift/settings/hcp-correlatio
 <div class="paragraph">
 <p>PUT validation: <code>h_p99_threshold_s</code> 0.001–3600; <code>h_baseline_multiple</code> 1–100;
 <code>c_cpu_pct</code> 1–100; <code>c_etcd_p99_s</code> 0.001–60; <code>window_h</code> 1–168; <code>skew_m</code> 0–60;
-<code>freshness_h</code> 1–720 and <code>&gt;= window_h</code>; <code>expiry_h</code> 1–720. Unknown fields are
+<code>freshness_h</code> 1–720 and <code>&gt;= window_h</code>; <code>expiry_h</code> 1–720; <code>z_idle_req_per_day</code> 1–1e6; <code>z_idle_cpu_floor_mc</code> 1–100000; <code>z_short_window_days</code> 1–90 and <code>&#8656; z_idle_window_days</code>; <code>z_short_required_days</code> 1–90 and <code>&#8656; z_short_window_days</code>; <code>z_idle_window_days</code> 1–90. Unknown fields are
 rejected; env-locked fields return 403 with offending names. Fixed methodological
 floors (not tunable, no env var): 30-minute minimum data per window and 36-hour
 node-recency calibration for N. DELETE returns <strong>204</strong> and removes per-org overrides.</p>
@@ -4923,7 +4933,7 @@ GET /api/cost-management/v1/reports/aws/costs/?group_by[account]=*&amp;exclude[a
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-10-01 13:07:11 +0200
+Last updated 2026-10-07 10:24:58 +0200
 </div>
 </div>
 </body>
