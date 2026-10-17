@@ -1396,6 +1396,8 @@ unassociated HCP rows show <code>incomplete: true</code>:</p>
 <pre>GET /api/cost-management/v1/recommendations/openshift/hcp
 GET /api/cost-management/v1/recommendations/openshift/hcp?filter[hosted_cluster_id]=HOSTED_CLUSTER_ID
 GET /api/cost-management/v1/recommendations/openshift/hcp?group_by[hosted_cluster_id]=*
+GET /api/cost-management/v1/recommendations/openshift/hcp?filter[scope]=management
+GET /api/cost-management/v1/recommendations/openshift/hcp?filter[scope]=management&amp;group_by[namespace]=*
 GET /api/cost-management/v1/recommendations/openshift/hcp/:recommendation-id</pre>
 </div>
 </div>
@@ -1406,6 +1408,16 @@ never grant access outside the caller&#8217;s scope. Group-by rows carry per-hos
 (associated rows only) plus <code>estimated_savings</code> (<code>{"value", "units"}</code> summed over
 pinned short/cost rows, converted to display currency); <code>meta.currency</code> names the
 currency.</p>
+</div>
+<div class="paragraph">
+<p><code>filter[scope]=management</code> switches the surface to management-overhead rows:
+container rows on <code>cluster_topology = 'management'</code> clusters whose namespace is not
+a hosted control plane (not in the cluster&#8217;s <code>hcp_namespaces</code>; a NULL list reads as
+empty). It combines with <code>group_by[namespace]</code> and any other filters. Without the
+param the served shape is unchanged; the scope is keyword-selectable — unknown
+values are rejected with HTTP 400 (<code>{"status": "error", "message": &#8230;&#8203;}</code>), never
+ignored. Under the alternated scope, detail IDs are validated against management
+scope: a management row 404s without the param, a hosted row 404s with it.</p>
 </div>
 </div>
 <div class="sect3">
@@ -4933,7 +4945,7 @@ GET /api/cost-management/v1/reports/aws/costs/?group_by[account]=*&amp;exclude[a
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-10-07 10:24:58 +0200
+Last updated 2026-10-18 01:25:31 +0200
 </div>
 </div>
 </body>

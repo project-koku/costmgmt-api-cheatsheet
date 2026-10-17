@@ -1,0 +1,30 @@
+meta {
+  name: HCP recommendations - scope management
+  type: http
+  seq: 238
+}
+
+get {
+  url: {{baseURL}}/recommendations/openshift/hcp?filter[scope]=management&group_by[namespace]=*&limit=20&offset=0
+  body: none
+  auth: inherit
+}
+
+headers {
+  x-rh-identity: {{xRhIdentity}}
+}
+
+docs {
+  Management-overhead scope (#694): container rows on cluster_topology =
+  'management' clusters whose namespace is not a hosted control plane (not in
+  hcp_namespaces; a NULL list reads as empty). Combined here with
+  group_by[namespace] for per-namespace overhead totals (count plus
+  estimated_savings summed over pinned rows). Unknown filter[scope] values
+  are rejected with HTTP 400. Omit the param for the default HCP-evidence
+  shape, which is unchanged.
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

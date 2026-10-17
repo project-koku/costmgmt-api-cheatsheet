@@ -775,6 +775,8 @@ unassociated HCP rows show `incomplete: true`:
 GET /api/cost-management/v1/recommendations/openshift/hcp
 GET /api/cost-management/v1/recommendations/openshift/hcp?filter[hosted_cluster_id]=HOSTED_CLUSTER_ID
 GET /api/cost-management/v1/recommendations/openshift/hcp?group_by[hosted_cluster_id]=*
+GET /api/cost-management/v1/recommendations/openshift/hcp?filter[scope]=management
+GET /api/cost-management/v1/recommendations/openshift/hcp?filter[scope]=management&group_by[namespace]=*
 GET /api/cost-management/v1/recommendations/openshift/hcp/:recommendation-id
 ----
 
@@ -784,6 +786,15 @@ never grant access outside the caller's scope. Group-by rows carry per-hosted co
 (associated rows only) plus `estimated_savings` (`{"value", "units"}` summed over
 pinned short/cost rows, converted to display currency); `meta.currency` names the
 currency.
+
+`filter[scope]=management` switches the surface to management-overhead rows:
+container rows on `cluster_topology = 'management'` clusters whose namespace is not
+a hosted control plane (not in the cluster's `hcp_namespaces`; a NULL list reads as
+empty). It combines with `group_by[namespace]` and any other filters. Without the
+param the served shape is unchanged; the scope is keyword-selectable — unknown
+values are rejected with HTTP 400 (`{"status": "error", "message": ...}`), never
+ignored. Under the alternated scope, detail IDs are validated against management
+scope: a management row 404s without the param, a hosted row 404s with it.
 
 ==== Pagination
 
