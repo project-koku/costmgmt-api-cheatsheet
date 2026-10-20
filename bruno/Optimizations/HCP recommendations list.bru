@@ -15,10 +15,17 @@ headers {
 }
 
 docs {
-  Hosted control-plane recommendations: HCP-namespaced container rows
-  (associated + incomplete:true unassociated). App-namespace rows never appear.
-  Each item carries hosted_cluster_id (omitted when unassociated) and
-  incomplete. Requires the hcp plugin.
+  Hosted control-plane recommendations: HCP-namespaced container rows.
+  App-namespace rows never appear. Requires the hcp plugin.
+
+  Row cluster facts (#695): rows carry hosted_cluster_id (omitted when
+  unassociated), explicit management true|false from clusters.cluster_topology
+  (classic surfaces omit the field), and incomplete.
+
+  incomplete:true fires only for evidenced-but-unassociated rows — usage data
+  present but the cluster row is missing from the clusters table. A management
+  row (management:true, served under filter[scope]=management) is never
+  incomplete; show its cluster_alias, not "Incomplete".
 }
 
 settings {

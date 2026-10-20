@@ -768,8 +768,14 @@ cluster outside RBAC scope returns HTTP 200 with an empty list (not 403).
 ==== Hosted control-plane recommendations
 
 Dedicated surface for HyperShift control-plane rightsizing (requires the `hcp` plugin).
-Lists HCP-namespaced container rows only — associated rows carry `hosted_cluster_id`,
-unassociated HCP rows show `incomplete: true`:
+Lists HCP-namespaced container rows only. HCP rows carry cluster facts from the
+`clusters` row: `hosted_cluster_id` when associated, `incomplete: true` only for
+evidenced-but-unassociated hosted rows (usage data present, but the cluster is
+missing from the `clusters` table), and explicit `management: true|false` from
+`clusters.cluster_topology` under `filter[scope]=management` (rows without the
+scope param are hosted rows and carry `management: false`). A management row is
+never `incomplete`; UIs should show the management cluster name (`cluster_alias`),
+not "Incomplete", for those rows:
 
 ----
 GET /api/cost-management/v1/recommendations/openshift/hcp
@@ -778,10 +784,16 @@ GET /api/cost-management/v1/recommendations/openshift/hcp?group_by[hosted_cluste
 GET /api/cost-management/v1/recommendations/openshift/hcp?filter[scope]=management
 GET /api/cost-management/v1/recommendations/openshift/hcp?filter[scope]=management&group_by[namespace]=*
 GET /api/cost-management/v1/recommendations/openshift/hcp/:recommendation-id
+GET /api/cost-management/v1/recommendations/openshift/hcp/:recommendation-id?include=explanation&filter[term]=short_term&filter[engine]=cost
 ----
 
 Unknown hosted IDs return HTTP 200 with an empty list (not 404); non-HCP detail IDs
-return 404. Like tag filters, the hosted filter applies after RBAC scoping and can
+return 404. The HCP detail resolves against the native recommendation first, with the
+same shape as the plain container detail endpoint: the typed `expl_*` explanation
+block is folded in with `include=explanation` (the only recognized include token;
+unknown values are ignored), projection rows are served by default and `filter[term]`
+/ `filter[engine]` select which projections are pinned. Like tag filters, the hosted
+filter applies after RBAC scoping and can
 never grant access outside the caller's scope. Group-by rows carry per-hosted counts
 (associated rows only) plus `estimated_savings` (`{"value", "units"}` summed over
 pinned short/cost rows, converted to display currency); `meta.currency` names the
@@ -844,7 +856,11 @@ Prefer `Accept: text/csv` for explicit content negotiation. Response `Content-Ty
 is `text/csv`. The export is capped at 1000 list records (up to 6000 CSV rows when
 all three terms and both engines are present). Columns include cluster, project,
 workload, container, savings (`estimated_monthly_savings`, `cpu_savings`, `memory_savings`),
-idle state, and per-term CPU/memory requests and limits.
+idle state, and per-term CPU/memory requests and limits. Hosted-cluster attribution
+columns (`cluster_alias`, `hosted_cluster_id`, `management`, `incomplete`) are shared
+by the plain container CSV and the HCP CSV (`GET .../hcp?format=csv`): `management`
+prints `false` for classic rows and reflects `clusters.cluster_topology` on HCP rows,
+while `incomplete` stays `true` only for evidenced-but-unassociated rows.
 Use the same filters and `order_by` parameters as the JSON list endpoint.
 
 `cpu_savings` and `memory_savings` are the per-resource CPU and memory breakdowns of
@@ -886,6 +902,9 @@ GET /api/cost-management/v1/recommendations/openshift/history?filter[tag:environ
 
 History accepts `filter[engine]=cost|performance` (preferred) or legacy flat `?engine=cost`.
 Term filter accepts canonical forms (`short_term`, `medium_term`, `long_term`); legacy values (`short`, `medium`, `long`) are also accepted and normalized.
+`filter[cluster]` (and legacy `?cluster=`) match the cluster **alias**, exact match — pass
+the `cluster_alias` the detail/row response serves, not the cluster UUID (which returns
+0 rows unless it happens to be the alias).
 Response includes 21 `expl_*` explanation columns (nullable, omitted when nil) providing recommendation context: data days, decay half-life, CPU/memory cost/perf percentiles, usage statistics, adaptive margins, trend slopes, OOM counts, floor flags, and idle state.
 
 Recommendation quality metrics are available for 5 entity types, each with its own endpoint and entity-specific columns:

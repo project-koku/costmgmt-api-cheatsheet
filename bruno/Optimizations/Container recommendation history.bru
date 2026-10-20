@@ -5,13 +5,13 @@ meta {
 }
 
 get {
-  url: {{baseURL}}/recommendations/openshift/history?cluster={{clusterUuid}}&container=grafana&filter[engine]=cost&term=short_term&limit=5
+  url: {{baseURL}}/recommendations/openshift/history?cluster={{clusterAlias}}&container=grafana&filter[engine]=cost&term=short_term&limit=5
   body: none
   auth: inherit
 }
 
 params:query {
-  cluster: {{clusterUuid}}
+  cluster: {{clusterAlias}}
   container: grafana
   filter[engine]: cost
   term: short_term
@@ -38,6 +38,10 @@ docs {
   Response always returns the canonical form.
 
   Used by the frontend Container Recommendation History Chart (issue #49).
+
+  `cluster` (and filter[cluster]) matches the cluster alias, exact match —
+  pass the cluster_alias value from the row/detail response, NOT the cluster
+  UUID (a UUID returns 0 rows unless it happens to be the alias). #696.
 }
 
 settings {

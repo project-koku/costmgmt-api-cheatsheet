@@ -1,0 +1,44 @@
+meta {
+  name: HCP recommendations detail
+  type: http
+  seq: 239
+}
+
+get {
+  url: {{baseURL}}/recommendations/openshift/hcp/{{hcpRecommendationId}}?include=explanation&filter[term]=short_term&filter[engine]=cost
+  body: none
+  auth: inherit
+}
+
+params:query {
+  include: explanation
+  filter[term]: short_term
+  filter[engine]: cost
+}
+
+headers {
+  x-rh-identity: {{xRhIdentity}}
+}
+
+docs {
+  Native-first HCP detail (#696). RecommendAllWorkloads results resolve by
+  raw container_id (the same ID the HCP list pins serve); HCP scope and
+  row-scoping still gate access, so a hosted row outside the requested
+  filter[scope] returns 404.
+
+  include=explanation folds the typed expl_* explanation block into the
+  response data — explanation is the only recognized include token (unknown
+  values are ignored). Projection rows are served by default (same as the
+  container detail endpoint); filter[term]/filter[engine] select which
+  projections are pinned.
+
+  The detail row also carries the #695 cluster facts: hosted_cluster_id,
+  management, and incomplete (evidenced-but-unassociated only).
+
+  Replaces {{hcpRecommendationId}} with an ID from the HCP list response.
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

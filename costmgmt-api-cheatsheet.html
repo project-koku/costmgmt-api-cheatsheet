@@ -1388,8 +1388,14 @@ cluster outside RBAC scope returns HTTP 200 with an empty list (not 403).</p>
 <h4 id="_hosted_control_plane_recommendations">Hosted control-plane recommendations</h4>
 <div class="paragraph">
 <p>Dedicated surface for HyperShift control-plane rightsizing (requires the <code>hcp</code> plugin).
-Lists HCP-namespaced container rows only — associated rows carry <code>hosted_cluster_id</code>,
-unassociated HCP rows show <code>incomplete: true</code>:</p>
+Lists HCP-namespaced container rows only. HCP rows carry cluster facts from the
+<code>clusters</code> row: <code>hosted_cluster_id</code> when associated, <code>incomplete: true</code> only for
+evidenced-but-unassociated hosted rows (usage data present, but the cluster is
+missing from the <code>clusters</code> table), and explicit <code>management: true|false</code> from
+<code>clusters.cluster_topology</code> under <code>filter[scope]=management</code> (rows without the
+scope param are hosted rows and carry <code>management: false</code>). A management row is
+never <code>incomplete</code>; UIs should show the management cluster name (<code>cluster_alias</code>),
+not "Incomplete", for those rows:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -1398,12 +1404,18 @@ GET /api/cost-management/v1/recommendations/openshift/hcp?filter[hosted_cluster_
 GET /api/cost-management/v1/recommendations/openshift/hcp?group_by[hosted_cluster_id]=*
 GET /api/cost-management/v1/recommendations/openshift/hcp?filter[scope]=management
 GET /api/cost-management/v1/recommendations/openshift/hcp?filter[scope]=management&amp;group_by[namespace]=*
-GET /api/cost-management/v1/recommendations/openshift/hcp/:recommendation-id</pre>
+GET /api/cost-management/v1/recommendations/openshift/hcp/:recommendation-id
+GET /api/cost-management/v1/recommendations/openshift/hcp/:recommendation-id?include=explanation&amp;filter[term]=short_term&amp;filter[engine]=cost</pre>
 </div>
 </div>
 <div class="paragraph">
 <p>Unknown hosted IDs return HTTP 200 with an empty list (not 404); non-HCP detail IDs
-return 404. Like tag filters, the hosted filter applies after RBAC scoping and can
+return 404. The HCP detail resolves against the native recommendation first, with the
+same shape as the plain container detail endpoint: the typed <code>expl_*</code> explanation
+block is folded in with <code>include=explanation</code> (the only recognized include token;
+unknown values are ignored), projection rows are served by default and <code>filter[term]</code>
+/ <code>filter[engine]</code> select which projections are pinned. Like tag filters, the hosted
+filter applies after RBAC scoping and can
 never grant access outside the caller&#8217;s scope. Group-by rows carry per-hosted counts
 (associated rows only) plus <code>estimated_savings</code> (<code>{"value", "units"}</code> summed over
 pinned short/cost rows, converted to display currency); <code>meta.currency</code> names the
@@ -1480,7 +1492,11 @@ GET /api/cost-management/v1/recommendations/openshift/?format=csv&amp;limit=100&
 is <code>text/csv</code>. The export is capped at 1000 list records (up to 6000 CSV rows when
 all three terms and both engines are present). Columns include cluster, project,
 workload, container, savings (<code>estimated_monthly_savings</code>, <code>cpu_savings</code>, <code>memory_savings</code>),
-idle state, and per-term CPU/memory requests and limits.
+idle state, and per-term CPU/memory requests and limits. Hosted-cluster attribution
+columns (<code>cluster_alias</code>, <code>hosted_cluster_id</code>, <code>management</code>, <code>incomplete</code>) are shared
+by the plain container CSV and the HCP CSV (<code>GET &#8230;&#8203;/hcp?format=csv</code>): <code>management</code>
+prints <code>false</code> for classic rows and reflects <code>clusters.cluster_topology</code> on HCP rows,
+while <code>incomplete</code> stays <code>true</code> only for evidenced-but-unassociated rows.
 Use the same filters and <code>order_by</code> parameters as the JSON list endpoint.</p>
 </div>
 <div class="paragraph">
@@ -1588,6 +1604,9 @@ GET /api/cost-management/v1/recommendations/openshift/history?filter[tag:environ
 <div class="paragraph">
 <p>History accepts <code>filter[engine]=cost|performance</code> (preferred) or legacy flat <code>?engine=cost</code>.
 Term filter accepts canonical forms (<code>short_term</code>, <code>medium_term</code>, <code>long_term</code>); legacy values (<code>short</code>, <code>medium</code>, <code>long</code>) are also accepted and normalized.
+<code>filter[cluster]</code> (and legacy <code>?cluster=</code>) match the cluster <strong>alias</strong>, exact match — pass
+the <code>cluster_alias</code> the detail/row response serves, not the cluster UUID (which returns
+0 rows unless it happens to be the alias).
 Response includes 21 <code>expl_*</code> explanation columns (nullable, omitted when nil) providing recommendation context: data days, decay half-life, CPU/memory cost/perf percentiles, usage statistics, adaptive margins, trend slopes, OOM counts, floor flags, and idle state.</p>
 </div>
 <div class="paragraph">
@@ -4945,7 +4964,7 @@ GET /api/cost-management/v1/reports/aws/costs/?group_by[account]=*&amp;exclude[a
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-10-18 01:25:31 +0200
+Last updated 2026-10-19 03:57:40 +0200
 </div>
 </div>
 </body>
