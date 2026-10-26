@@ -1,0 +1,42 @@
+meta {
+  name: HCP fleet capacity (latest per cluster)
+  type: http
+  seq: 240
+}
+
+get {
+  url: {{baseURL}}/recommendations/openshift/hcp/fleet-capacity
+  body: none
+  auth: inherit
+}
+
+docs {
+  W4 fleet-capacity advisory (ros-ocp-backend #392; requires the hcp plugin).
+
+  Returns the latest native published-sizing snapshot per management
+  cluster authorized for the caller. Without a cluster filter: exactly one
+  row per cluster (the card-list discovery surface). Narrow to one
+  cluster with filter[cluster_uuid] (filter[cluster] and the bare
+  cluster_uuid query param resolve identically).
+
+  Each row carries the five scenarios (request, low_qps, average_qps,
+  medium_qps, high_qps) with serve-time headroom: null when occupancy,
+  worker placement, or average QPS is unknown, and withheld (null) when
+  node pressure is affirmed — never derived client-side. An empty
+  limiting_resource means the scenario has no estimate (render "not
+  available", not 0). mce_references are the optional same-scenario MCE
+  gauges: null = absent, never zero.
+
+  warnings: stale (age over 2x the row's own max cadence),
+  below_version_floor (known ocp_version under 4.17 — data still
+  served), pressured, pressure_unknown, mce_may_be_stale (MCE gauges
+  frozen across the freshness window while native inputs moved).
+
+  Unknown or unauthorized clusters are non-disclosing: HTTP 200 with
+  empty data, never 403/404.
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

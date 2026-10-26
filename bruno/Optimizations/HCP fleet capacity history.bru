@@ -1,0 +1,36 @@
+meta {
+  name: HCP fleet capacity history (per-cluster trend)
+  type: http
+  seq: 241
+}
+
+get {
+  url: {{baseURL}}/recommendations/openshift/hcp/fleet-capacity/history?filter[cluster_uuid]={{clusterUUID}}&limit=20&offset=0
+  body: none
+  auth: inherit
+}
+
+params:query {
+  filter[cluster_uuid]: {{clusterUUID}}
+  limit: 20
+  offset: 0
+}
+
+docs {
+  W4 fleet-capacity history (ros-ocp-backend #392; requires the hcp plugin).
+
+  Newest-first snapshots for ONE management cluster — the single-cluster
+  filter is required (a per-cluster trend; missing filter is HTTP 400).
+  filter[cluster] is the accepted alias spelling. limit/offset paginate;
+  meta.count is the total, not the page size.
+
+  Rows have the same shape as the latest endpoint. The mce_may_be_stale
+  caution is a latest-snapshot property and is omitted here. Same
+  non-disclosing authorization: unknown or unauthorized clusters return
+  HTTP 200 with empty data.
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

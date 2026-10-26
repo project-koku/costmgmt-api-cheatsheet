@@ -1433,6 +1433,51 @@ scope: a management row 404s without the param, a hosted row 404s with it.</p>
 </div>
 </div>
 <div class="sect3">
+<h4 id="_hosted_control_plane_fleet_capacity_w4_advisory">Hosted control-plane fleet capacity (W4 advisory)</h4>
+<div class="paragraph">
+<p>Fleet-capacity advisory for management clusters (requires the <code>hcp</code> plugin):
+how many additional hosted control planes the eligible worker set could
+host, per the native published-sizing model (<code>native_model_version</code>), with
+optional MCE reference gauges. Two endpoints:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>GET /api/cost-management/v1/recommendations/openshift/hcp/fleet-capacity
+GET /api/cost-management/v1/recommendations/openshift/hcp/fleet-capacity?filter[cluster_uuid]=CLUSTER_UUID
+GET /api/cost-management/v1/recommendations/openshift/hcp/fleet-capacity/history?filter[cluster_uuid]=CLUSTER_UUID&amp;limit=20&amp;offset=0</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Without a cluster filter the latest endpoint returns exactly one row per
+management cluster authorized for the caller (the discovery surface);
+<code>filter[cluster_uuid]</code> narrows to that cluster. <code>filter[cluster]</code> and the
+bare <code>cluster_uuid</code> query param resolve identically. History is a
+per-cluster trend: the single-cluster filter is required (missing filter
+is HTTP 400), rows are newest-first, and <code>limit</code>/<code>offset</code> paginate with
+<code>meta.count</code> as the total.</p>
+</div>
+<div class="paragraph">
+<p>Each row carries the five scenarios (<code>request</code>, <code>low_qps</code>, <code>average_qps</code>,
+<code>medium_qps</code>, <code>high_qps</code>) with serve-time headroom: <code>null</code> when occupancy,
+worker placement, or average QPS is unknown, and withheld under affirmed
+node pressure (ADR-0334: an over-committed cluster must not advertise an
+exact <code>+N</code>). An empty <code>limiting_resource</code> means the scenario has no
+estimate — render "not available", never 0; a genuine zero maximum with a
+limiting resource is a value. <code>mce_references</code> are the optional
+same-scenario MCE gauges: <code>null</code> means absent, never zero.</p>
+</div>
+<div class="paragraph">
+<p><code>warnings</code> are explicit booleans: <code>stale</code> (age over 2x the row&#8217;s own max
+of <code>collection_interval_minutes</code> / <code>upload_cycle_minutes</code>),
+<code>below_version_floor</code> (known <code>ocp_version</code> under the documented 4.17
+floor — data is still served, never suppressed), <code>pressured</code>,
+<code>pressure_unknown</code>, and <code>mce_may_be_stale</code> (MCE gauges frozen across the
+freshness window while native inputs moved; latest endpoint only).
+Unknown or unauthorized clusters are non-disclosing: HTTP 200 with empty
+data, never 403/404.</p>
+</div>
+</div>
+<div class="sect3">
 <h4 id="_pagination">Pagination</h4>
 <div class="paragraph">
 <p>Offset pagination (default):</p>
@@ -4964,7 +5009,7 @@ GET /api/cost-management/v1/reports/aws/costs/?group_by[account]=*&amp;exclude[a
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-10-19 03:57:40 +0200
+Last updated 2026-10-26 07:15:33 +0100
 </div>
 </div>
 </body>
