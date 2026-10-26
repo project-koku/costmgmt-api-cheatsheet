@@ -1471,8 +1471,11 @@ same-scenario MCE gauges: <code>null</code> means absent, never zero.</p>
 of <code>collection_interval_minutes</code> / <code>upload_cycle_minutes</code>),
 <code>below_version_floor</code> (known <code>ocp_version</code> under the documented 4.17
 floor — data is still served, never suppressed), <code>pressured</code>,
-<code>pressure_unknown</code>, and <code>mce_may_be_stale</code> (MCE gauges frozen across the
-freshness window while native inputs moved; latest endpoint only).
+<code>pressure_unknown</code>, <code>mce_may_be_stale</code> (MCE gauges frozen across the
+freshness window while native inputs moved; latest endpoint only), and
+<code>shared_infrastructure</code> (compact topology: management control-plane
+nodes double as workers — OCP sizing-guide 3.2.5 caveat; estimates may
+overstate dedicated capacity, still served).
 Unknown or unauthorized clusters are non-disclosing: HTTP 200 with empty
 data, never 403/404.</p>
 </div>
@@ -5009,7 +5012,7 @@ GET /api/cost-management/v1/reports/aws/costs/?group_by[account]=*&amp;exclude[a
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-10-26 07:15:33 +0100
+Last updated 2026-10-26 07:47:35 +0100
 </div>
 </div>
 </body>

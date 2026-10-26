@@ -842,8 +842,11 @@ same-scenario MCE gauges: `null` means absent, never zero.
 of `collection_interval_minutes` / `upload_cycle_minutes`),
 `below_version_floor` (known `ocp_version` under the documented 4.17
 floor — data is still served, never suppressed), `pressured`,
-`pressure_unknown`, and `mce_may_be_stale` (MCE gauges frozen across the
-freshness window while native inputs moved; latest endpoint only).
+`pressure_unknown`, `mce_may_be_stale` (MCE gauges frozen across the
+freshness window while native inputs moved; latest endpoint only), and
+`shared_infrastructure` (compact topology: management control-plane
+nodes double as workers — OCP sizing-guide 3.2.5 caveat; estimates may
+overstate dedicated capacity, still served).
 Unknown or unauthorized clusters are non-disclosing: HTTP 200 with empty
 data, never 403/404.
 
