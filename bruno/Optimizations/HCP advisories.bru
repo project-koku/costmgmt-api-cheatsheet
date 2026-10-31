@@ -1,0 +1,42 @@
+meta {
+  name: HCP advisories
+  type: http
+  seq: 242
+}
+
+get {
+  url: {{baseURL}}/recommendations/openshift/hcp/advisories
+  body: none
+  auth: inherit
+}
+
+docs {
+  All correlator advisories for the org (ros-ocp-backend #717, ADR-0349;
+  requires the hcp plugin).
+
+  One advisory per hosted cluster per window — the rules are
+  predicate-partitioned. Verdicts with typed per-verdict details:
+
+  - do_not_add_workers_first (W2 headroom: hosted_api_p99_seconds,
+    hosted_api_threshold_seconds, control_plane_capacity_ratio)
+  - tune_noisy_webhook (W5 api-tax; hosted_cluster_id is null —
+    management-cluster-scoped: webhook, webhook_p99_seconds,
+    webhook_p99_threshold_seconds, webhook_rejected_rate)
+  - review_unused_hosted_cluster (W3 zombie: peak_user_cpu_mc,
+    idle_floor_cpu_mc, control_plane_cpu_request_mc,
+    api_max_daily_requests — omitted when unknown)
+  - schedule_nonprod_sleep (W8 non-prod sleep candidate: declared_tier,
+    bh_active_peak_cpu_mc, outside_bh_peak_cpu_mc, worker_node_count,
+    reclaim_node_hours_per_week — worker capacity only; the control
+    plane keeps running, waking takes ~20 minutes)
+
+  Every row also carries the raw correlator evidence (key:value
+  signals), confidence, window_start/window_end, expires_at, and
+  management_cluster_uuid. Unpaginated; 500-row cap. Field vocabulary
+  evolves additively only.
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

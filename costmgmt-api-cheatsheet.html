@@ -1022,6 +1022,35 @@ POST /api/cost-management/v1/internal/backfill-gpu-timeslicing?org_id=1234567&am
 <div class="paragraph">
 <p>Required: <code>org_id</code>. Response includes <code>tag_keys</code> (array of known keys), <code>source</code> (<code>"api"</code> or <code>"db"</code>), and <code>synced_at</code> timestamp (API mode only).</p>
 </div>
+</div>
+<div class="sect3">
+<h4 id="_cost_groups_sync_internal">Cost-groups sync (internal)</h4>
+<div class="paragraph">
+<p>Receives the tenant&#8217;s admin-curated Platform cost-group namespaces from Koku — the same push pattern as tag sync. Service-account bearer token required (same auth as tag sync). The koku side is a Celery push task gated by its own <code>ROS_COSTGROUPS_ENABLED</code> / <code>ROS_COSTGROUPS_SOURCE=api</code> settings (koku repo); the ROS side accepts the payload regardless of its own tags config. Replace semantics: each sync replaces the org&#8217;s rows wholesale.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>POST /api/cost-management/v1/internal/cost-groups/sync</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Example body:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-json" data-lang="json">{
+  "org_id": "1234567",
+  "synced_at": "2026-10-30T12:15:00Z",
+  "entries": [
+    { "namespace": "kube-%", "is_prefix": true, "system_default": true },
+    { "namespace": "ros-demo", "is_prefix": false, "system_default": false }
+  ]
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Entries are exact namespaces or <code>%</code>-wildcard prefixes (<code>is_prefix</code>); <code>system_default</code> is provenance only — both exclude identically in the W3 zombie rule&#8217;s platform split. Exact entries containing whitespace are rejected (HTTP 400) for the whole payload. Response: <code>200 OK</code> with <code>{"updated": N}</code>.</p>
+</div>
 <div class="paragraph">
 <p>Savings summary response excerpt:</p>
 </div>
@@ -2108,6 +2137,9 @@ GET /api/cost-management/v1/recommendations/openshift/gpu/timeslicing/history?cl
 <p>Node-level right-sizing based on CPU and memory utilization patterns — identifies underutilized, overcommitted, stranded-resource, idle, and zombie nodes. One JSON object per node with nested <code>recommendation_terms</code> and dual engines (<code>cost</code>, <code>performance</code>).</p>
 </div>
 <div class="paragraph">
+<p>Rows carry <code>node_role</code> (worker/master/infra from the node&#8217;s role; absent on old CSVs — reads as unknown, never a role). On clusters with <strong>3+ master-role nodes</strong>, control-plane (master) rows carry notification <strong>85</strong> (<code>NODE_CP_SCOPE</code>, INFO): rightsizing via CPMS rolling update only, never below install minimums, quorum protected by mechanism — single-master (SNO) topologies are structurally excluded.</p>
+</div>
+<div class="paragraph">
 <p>List stays all-hours. Node <strong>detail</strong> may nest <code>recommendation_engines.{cost|performance}.business_hours</code> (cores/GiB) when an org or cluster schedule is enabled (code <strong>79</strong>). Visual Insights may include sibling <code>daily_digests_business_hours</code> (same shape as <code>daily_digests</code>; omitted when empty; never merged). Namespace-only schedules do not apply to nodes.</p>
 </div>
 <div class="listingblock">
@@ -3033,6 +3065,53 @@ DELETE /api/cost-management/v1/recommendations/openshift/settings/snapshot</pre>
 </div>
 </div>
 <div class="sect3">
+<h4 id="_hcp_advisories">HCP advisories</h4>
+<div class="paragraph">
+<p>Live correlator advisories for the org — the serving surface for every HCP advisory verdict (ros-ocp-backend #717, ADR-0349). Requires the <code>hcp</code> plugin. One advisory exists per hosted cluster per window (the rules are predicate-partitioned); the response is unpaginated with a 500-row cap, and rows expire per <code>expiry_h</code>.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>GET /api/cost-management/v1/recommendations/openshift/hcp/advisories</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Verdicts and their typed <code>details</code>:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 40%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Verdict</th>
+<th class="tableblock halign-left valign-top">Meaning and details</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>do_not_add_workers_first</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">W2 headroom: hosted API latency and CP saturation say add workers before workloads. Details: <code>hosted_api_p99_seconds</code>, <code>hosted_api_threshold_seconds</code>, <code>control_plane_capacity_ratio</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>tune_noisy_webhook</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">W5 api-tax: a webhook storms the shared API plane. Management-cluster-scoped — <code>hosted_cluster_id</code> is null on these rows. Details: <code>webhook</code>, <code>webhook_p99_seconds</code>, <code>webhook_p99_threshold_seconds</code>, <code>webhook_rejected_rate</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>review_unused_hosted_cluster</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">W3 zombie: the hosted cluster looks unused while its control plane keeps costing. Details: <code>peak_user_cpu_mc</code>, <code>idle_floor_cpu_mc</code>, <code>control_plane_cpu_request_mc</code>, <code>api_max_daily_requests</code> (omitted when unknown).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>schedule_nonprod_sleep</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">W8 non-prod sleep candidate: declared non-prod (label <code>insights.cost-management/hc-tier=non-prod</code> on the HostedCluster) and active only during the org&#8217;s business hours. Details: <code>declared_tier</code>, <code>bh_active_peak_cpu_mc</code>, <code>outside_bh_peak_cpu_mc</code>, <code>worker_node_count</code>, <code>reclaim_node_hours_per_week</code>. The reclaim is worker capacity only — the control plane keeps running; waking takes ~20 minutes (full reprovision).</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Every row also carries the raw correlator <code>evidence</code> (key:value signals), <code>confidence</code>, <code>window_start</code>/<code>window_end</code>, <code>expires_at</code>, and <code>management_cluster_uuid</code>. The field vocabulary evolves additively only.</p>
+</div>
+</div>
+<div class="sect3">
 <h4 id="_hcp_correlation_settings">HCP correlation settings</h4>
 <div class="paragraph">
 <p>Thin cross-plane correlator policy (requires the <code>hcp</code> plugin; when disabled the route returns <code>404</code>).
@@ -3061,7 +3140,10 @@ DELETE /api/cost-management/v1/recommendations/openshift/settings/hcp-correlatio
 | <code>z_idle_cpu_floor_mc</code> | <code>ROS_HCP_ZOMBIE_IDLE_CPU_FLOOR_MC</code> | 10 | Daily per-workload CPU (mC) counting as active; discouraged to tune |
 | <code>z_short_window_days</code> | <code>ROS_HCP_ZOMBIE_SHORT_WINDOW_DAYS</code> | 3 | Pool-zero fast-lane window (d); validated ≤ idle window |
 | <code>z_short_required_days</code> | <code>ROS_HCP_ZOMBIE_SHORT_REQUIRED_DAYS</code> | 3 | Covered pool-evidence days; validated ≤ short window |
-| <code>z_idle_window_days</code> | <code>ROS_HCP_ZOMBIE_IDLE_WINDOW_DAYS</code> | 14 | Standard idle window (d); Christmas-docs apply — shorten with care |</p>
+| <code>z_idle_window_days</code> | <code>ROS_HCP_ZOMBIE_IDLE_WINDOW_DAYS</code> | 14 | Standard idle window (d); Christmas-docs apply — shorten with care |
+| <code>sleep_window_days</code> | <code>ROS_HCP_SLEEP_WINDOW_DAYS</code> | 14 | W8 sleep-candidate signature window (d) |
+| <code>sleep_bh_activity_floor_mc</code> | <code>ROS_HCP_SLEEP_BH_ACTIVITY_FLOOR_MC</code> | 10 | Daily per-workload BH CPU (mC) counting as active in hours (W8 signature) |
+| <code>sleep_outside_bh_idle_floor_mc</code> | <code>ROS_HCP_SLEEP_OUTSIDE_BH_IDLE_FLOOR_MC</code> | 10 | Daily per-workload CPU outside BH (mC) that breaks the W8 signature |</p>
 </div>
 <div class="paragraph">
 <p>Example GET/PUT body:</p>
@@ -3082,6 +3164,9 @@ DELETE /api/cost-management/v1/recommendations/openshift/settings/hcp-correlatio
   "z_short_window_days": 3,
   "z_short_required_days": 3,
   "z_idle_window_days": 14,
+  "sleep_window_days": 14,
+  "sleep_bh_activity_floor_mc": 10,
+  "sleep_outside_bh_idle_floor_mc": 10,
   "locked_fields": []
 }</code></pre>
 </div>
@@ -3089,7 +3174,7 @@ DELETE /api/cost-management/v1/recommendations/openshift/settings/hcp-correlatio
 <div class="paragraph">
 <p>PUT validation: <code>h_p99_threshold_s</code> 0.001–3600; <code>h_baseline_multiple</code> 1–100;
 <code>c_cpu_pct</code> 1–100; <code>c_etcd_p99_s</code> 0.001–60; <code>window_h</code> 1–168; <code>skew_m</code> 0–60;
-<code>freshness_h</code> 1–720 and <code>&gt;= window_h</code>; <code>expiry_h</code> 1–720; <code>z_idle_req_per_day</code> 1–1e6; <code>z_idle_cpu_floor_mc</code> 1–100000; <code>z_short_window_days</code> 1–90 and <code>&#8656; z_idle_window_days</code>; <code>z_short_required_days</code> 1–90 and <code>&#8656; z_short_window_days</code>; <code>z_idle_window_days</code> 1–90. Unknown fields are
+<code>freshness_h</code> 1–720 and <code>&gt;= window_h</code>; <code>expiry_h</code> 1–720; <code>z_idle_req_per_day</code> 1–1e6; <code>z_idle_cpu_floor_mc</code> 1–100000; <code>z_short_window_days</code> 1–90 and <code>&#8656; z_idle_window_days</code>; <code>z_short_required_days</code> 1–90 and <code>&#8656; z_short_window_days</code>; <code>z_idle_window_days</code> 1–90; <code>sleep_window_days</code> 1–90; <code>sleep_bh_activity_floor_mc</code> and <code>sleep_outside_bh_idle_floor_mc</code> 1–100000. Unknown fields are
 rejected; env-locked fields return 403 with offending names. Fixed methodological
 floors (not tunable, no env var): 30-minute minimum data per window and 36-hour
 node-recency calibration for N. DELETE returns <strong>204</strong> and removes per-org overrides.</p>
@@ -5012,7 +5097,7 @@ GET /api/cost-management/v1/reports/aws/costs/?group_by[account]=*&amp;exclude[a
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-10-26 07:47:35 +0100
+Last updated 2026-10-31 12:01:33 +0100
 </div>
 </div>
 </body>

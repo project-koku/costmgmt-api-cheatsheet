@@ -1,0 +1,61 @@
+meta {
+  name: POST internal cost-groups sync
+  type: http
+  seq: 51
+}
+
+post {
+  url: {{baseURL}}/internal/cost-groups/sync
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{serviceAccountToken}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "org_id": "1234567",
+    "synced_at": "2026-10-30T12:15:00Z",
+    "entries": [
+      { "namespace": "kube-%", "is_prefix": true, "system_default": true },
+      { "namespace": "openshift-%", "is_prefix": true, "system_default": true },
+      { "namespace": "ros-demo", "is_prefix": false, "system_default": false }
+    ]
+  }
+}
+
+docs {
+  Receives the tenant's admin-curated Platform cost-group namespaces
+  from Koku (ros-ocp-backend #675/#712 — same push pattern and auth as
+  tag sync).
+
+  The koku side is a Celery push task gated by its own
+  ROS_COSTGROUPS_ENABLED / ROS_COSTGROUPS_SOURCE=api settings; the ROS
+  side accepts the payload regardless of its own tags config.
+
+  Replace semantics: each sync replaces the org's rows wholesale.
+  Entries are exact namespaces or %-wildcard prefixes (is_prefix);
+  system_default is provenance only — both exclude identically in the
+  W3 zombie rule's platform split. Exact entries containing whitespace
+  are rejected (HTTP 400) for the whole payload.
+
+  Response: 200 OK with {"updated": N}.
+
+  Set serviceAccountToken in environment (projected SA JWT or
+  ROS_SERVICE_TOKEN).
+}
+
+vars:pre-request {
+  serviceAccountToken: 
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
