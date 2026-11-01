@@ -28,6 +28,14 @@ body:json {
 docs {
   Per-org snapshot classification thresholds. `inventory_fresh_hours` controls how much
   recent inventory is used for classify/reconcile. Locked keys in `locked_fields` return 403 on PUT.
+
+  With RBAC enabled, PUT requires wildcard `cost-management:settings:write`.
+  Permission denial returns 403 with status=error and message="User does not have
+  permission to modify settings", without changing overrides or triggering work.
+  To verify this, use a disposable org: seed stale_days=120 as a writer, attempt
+  stale_days=121 as a real read-only user, then read back 120 as the writer.
+  Status 403 alone does not prove that state was preserved. Never use shared
+  tenant settings for this check, and clean up only the test-owned override.
 }
 
 settings {

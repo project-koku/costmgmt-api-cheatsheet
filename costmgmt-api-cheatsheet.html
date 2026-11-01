@@ -243,6 +243,7 @@ summary { cursor: pointer; font-weight: 500; }
 <li><a href="#_openshift_virtualization_vm_recommendations">OpenShift Virtualization (VM) recommendations</a></li>
 <li><a href="#_recommendation_term_settings">Recommendation term settings</a></li>
 <li><a href="#_settings_capabilities">Settings capabilities</a></li>
+<li><a href="#_settings_write_authorization_rbac">Settings write authorization (RBAC)</a></li>
 <li><a href="#_platform_settings_lock">Platform settings lock</a></li>
 <li><a href="#_recommendation_threshold_settings">Recommendation threshold settings</a></li>
 <li><a href="#_business_hours_settings">Business hours settings</a></li>
@@ -4000,6 +4001,40 @@ DELETE /api/cost-management/v1/recommendations/openshift/settings/terms?recommen
 </div>
 </div>
 <div class="sect2">
+<h3 id="_settings_write_authorization_rbac">Settings write authorization (RBAC)</h3>
+<div class="paragraph">
+<p>When RBAC is enabled, settings <code>PUT</code> and <code>DELETE</code> require wildcard
+<code>cost-management:settings:write</code> permission. Read access alone does not grant
+write permission. The access decision comes from RBAC, not permission fields
+invented in an identity header.</p>
+</div>
+<div class="paragraph">
+<p>A caller without settings write access receives <code>403 Forbidden</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-json" data-lang="json">{
+  "status": "error",
+  "message": "User does not have permission to modify settings"
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A permission-denied request stops before changing stored overrides,
+business-hours digests, recalculation/reship jobs, pending state or caches.
+This covers canonical settings routes, deprecated aliases and org, cluster and
+namespace business-hours mutations. Environment locks below are a separate
+reason for denial, with their existing response fields.</p>
+</div>
+<div class="paragraph">
+<p>For a permission regression check, use an explicitly disposable organization:
+seed a non-default override as an authorized writer, attempt a valid PUT or
+DELETE as a real read-only user, and verify a fresh authorized GET still sees
+the seeded value. <strong>Checking HTTP 403 alone is insufficient.</strong> Never run mutation
+checks on a shared lab/customer organization; clean up only test-owned state.</p>
+</div>
+</div>
+<div class="sect2">
 <h3 id="_platform_settings_lock">Platform settings lock</h3>
 <div class="paragraph">
 <p>When <code>ROS_SETTINGS_LOCKED=true</code>, tenant settings overrides are ignored on read and all settings <code>PUT</code>/<code>DELETE</code> requests return <code>403 Forbidden</code>:</p>
@@ -5097,7 +5132,7 @@ GET /api/cost-management/v1/reports/aws/costs/?group_by[account]=*&amp;exclude[a
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-10-31 12:01:33 +0100
+Last updated 2026-11-01 04:26:51 +0100
 </div>
 </div>
 </body>

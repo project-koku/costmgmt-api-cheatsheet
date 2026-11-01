@@ -14,6 +14,18 @@ headers {
   x-rh-identity: {{xRhIdentity}}
 }
 
+docs {
+  With RBAC enabled, DELETE requires wildcard `cost-management:settings:write`.
+  A permission-denied 403 must preserve the existing org schedule, business-hours
+  digests and pending state, without reship or cache changes. Environment locks
+  are an independent denial reason with their existing error/locked response.
+
+  Authorized DELETE is destructive: it removes the org override and can prune
+  digests and request historical reship. Run permission/state-preservation checks
+  only in an explicitly disposable org with a seeded non-default schedule and
+  a real read-only caller. Verify the unchanged schedule afterward, not only 403.
+}
+
 settings {
   encodeUrl: true
   timeout: 0

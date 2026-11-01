@@ -2496,6 +2496,35 @@ GET response:
 }
 ----
 
+=== Settings write authorization (RBAC)
+
+When RBAC is enabled, settings `PUT` and `DELETE` require wildcard
+`cost-management:settings:write` permission. Read access alone does not grant
+write permission. The access decision comes from RBAC, not permission fields
+invented in an identity header.
+
+A caller without settings write access receives `403 Forbidden`:
+
+[source,json]
+----
+{
+  "status": "error",
+  "message": "User does not have permission to modify settings"
+}
+----
+
+A permission-denied request stops before changing stored overrides,
+business-hours digests, recalculation/reship jobs, pending state or caches.
+This covers canonical settings routes, deprecated aliases and org, cluster and
+namespace business-hours mutations. Environment locks below are a separate
+reason for denial, with their existing response fields.
+
+For a permission regression check, use an explicitly disposable organization:
+seed a non-default override as an authorized writer, attempt a valid PUT or
+DELETE as a real read-only user, and verify a fresh authorized GET still sees
+the seeded value. *Checking HTTP 403 alone is insufficient.* Never run mutation
+checks on a shared lab/customer organization; clean up only test-owned state.
+
 === Platform settings lock
 
 When `ROS_SETTINGS_LOCKED=true`, tenant settings overrides are ignored on read and all settings `PUT`/`DELETE` requests return `403 Forbidden`:
