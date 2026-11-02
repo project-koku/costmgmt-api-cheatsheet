@@ -598,7 +598,7 @@ Recommendations for a specific container (use the recommendation UUID):
 GET /api/cost-management/v1/recommendations/openshift/{recommendation_uuid}
 ----
 
-Legacy aliases (identical behavior): `GET /api/cost-management/v1/recommendations/openshift/container`, `GET .../openshift/container/{recommendation_uuid}`.
+Legacy compatibility routes remain available: `GET /api/cost-management/v1/recommendations/openshift/container` and `GET .../openshift/container/{recommendation_uuid}`. The list alias retains its legacy response fields (`source_id` is empty; `cluster_alias` falls back to the UUID if cluster metadata is absent), so it is not byte-for-byte identical to the canonical native response. In native mode its `start_date` / `end_date` window filters `updated_at` with the current-month default, matching the canonical list; Kruize-only mode retains the legacy `monitoring_end_time` filter. The detail alias remains on the legacy handler. Use the canonical paths for new clients.
 
 The detail response includes per-term (short/medium/long) recommendations for two models:
 

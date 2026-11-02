@@ -1111,7 +1111,7 @@ POST /api/cost-management/v1/internal/backfill-gpu-timeslicing?org_id=1234567&am
 </div>
 </div>
 <div class="paragraph">
-<p>Legacy aliases (identical behavior): <code>GET /api/cost-management/v1/recommendations/openshift/container</code>, <code>GET &#8230;&#8203;/openshift/container/{recommendation_uuid}</code>.</p>
+<p>Legacy compatibility routes remain available: <code>GET /api/cost-management/v1/recommendations/openshift/container</code> and <code>GET &#8230;&#8203;/openshift/container/{recommendation_uuid}</code>. The list alias retains its legacy response fields (<code>source_id</code> is empty; <code>cluster_alias</code> falls back to the UUID if cluster metadata is absent), so it is not byte-for-byte identical to the canonical native response. In native mode its <code>start_date</code> / <code>end_date</code> window filters <code>updated_at</code> with the current-month default, matching the canonical list; Kruize-only mode retains the legacy <code>monitoring_end_time</code> filter. The detail alias remains on the legacy handler. Use the canonical paths for new clients.</p>
 </div>
 <div class="paragraph">
 <p>The detail response includes per-term (short/medium/long) recommendations for two models:</p>
@@ -5132,7 +5132,7 @@ GET /api/cost-management/v1/reports/aws/costs/?group_by[account]=*&amp;exclude[a
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-11-01 04:26:51 +0100
+Last updated 2026-11-02 17:52:01 +0100
 </div>
 </div>
 </body>
