@@ -19,7 +19,7 @@ docs {
   Filter container recommendations by OpenShift label (requires ROS_TAGS_ENABLED=true).
 
   Syntax:
-    filter[tag:<key>]=<value>           — exact value match
+    filter[tag:<key>]=<value>           — value match (a namespace matches when any of its values for the key equals it)
     filter[tag:<key>]=a,b                — OR within the same key
     filter[tag:team]=platform             — AND with other filter[tag:*] keys
     filter[tag:<key>]=*                   — key present (any value)
