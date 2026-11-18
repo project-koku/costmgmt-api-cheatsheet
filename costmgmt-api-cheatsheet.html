@@ -892,7 +892,22 @@ GET /api/cost-management/v1/recommendations/openshift/savings-summary?group_by[t
 </div>
 </div>
 <div class="paragraph">
-<p>Returns the cluster cost model rates used for savings: CPU/memory request and usage rates per hour, storage rates per month, <code>node_cost_per_month</code>, optional <code>gpu_cost_per_month</code>, markup, <code>distribution_type</code>, and per-namespace aggregates (<code>cost_model_cpu_cost</code>, <code>infrastructure_cost</code>, <code>distributed_cost</code>, etc.). ROS caches the response per cluster for the ingest cycle.</p>
+<p>Returns the cluster cost model rates used for savings: CPU/memory request and usage rates per hour, storage rates per month, <code>node_cost_per_month</code> (fallback <code>node_core_cost_per_month</code>), optional <code>gpu_cost_per_month</code>, markup, <code>distribution_type</code>, and per-namespace aggregates (<code>cost_model_cpu_cost</code>, <code>cost_model_gpu_cost</code>, <code>infrastructure_cost</code>, <code>distributed_cost</code>, etc.). ROS caches the response per cluster for the ingest cycle.</p>
+</div>
+<div class="paragraph">
+<p>Since #467 the response also carries <code>rates[]</code>: each cost-model row as stored, with <code>metric</code>, <code>cost_type</code>, <code>description</code>/<code>custom_name</code>, and either <code>tiered_rates[]</code> or <code>tag_rates</code>. Two money scales coexist until #461 converts the payload whole — <code>rates[]</code> is <strong>integer micro-cents</strong> (<code>1 USD = 100_000_000</code>), while <code>configured_rates</code> and <code>namespace_aggregates</code> stay <strong>float dollars</strong> for the deployed reader. Rates are resolved for <code>start_date</code> through the price list Masu applied, so a date no price list covers returns <code>rates: []</code> and <code>configured_rates: {}</code> rather than an error. <code>currency</code> is <code>null</code> when the provider has no cost model.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+The deployed ROS reader does not consume <code>rates[]</code> yet (<code>costdata.ClusterCostData</code> has no <code>rates</code> field); node and PVC savings are still driven by <code>configured_rates</code>. <code>rates[]</code> is available for the reader half tracked in ros-ocp-backend.
+</td>
+</tr>
+</table>
 </div>
 <div class="paragraph">
 <p>When rates are missing or Masu is unreachable, recommendations still persist but dollar fields are omitted or zero and notification code <strong>25</strong> (<code>NotifNoCostData</code>) is appended on container, node, and PVC rows. Fleet <code>savings-summary</code> exposes <code>by_cluster[].has_cost_data: false</code> when every recommendation in that cluster lacks cost data.</p>
@@ -5139,7 +5154,7 @@ GET /api/cost-management/v1/reports/aws/costs/?group_by[account]=*&amp;exclude[a
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-11-18 10:50:48 +0100
+Last updated 2026-11-18 12:01:01 +0100
 </div>
 </div>
 </body>

@@ -439,7 +439,11 @@ ROS does not expose a standalone cost-rate API. During ingestion (and savings re
 GET /api/cost-management/v1/effective_rates/?cluster_id=<cluster-id>&org_id=<org-id>&start_date=YYYY-MM-DD&end_date=YYYY-MM-DD
 ----
 
-Returns the cluster cost model rates used for savings: CPU/memory request and usage rates per hour, storage rates per month, `node_cost_per_month`, optional `gpu_cost_per_month`, markup, `distribution_type`, and per-namespace aggregates (`cost_model_cpu_cost`, `infrastructure_cost`, `distributed_cost`, etc.). ROS caches the response per cluster for the ingest cycle.
+Returns the cluster cost model rates used for savings: CPU/memory request and usage rates per hour, storage rates per month, `node_cost_per_month` (fallback `node_core_cost_per_month`), optional `gpu_cost_per_month`, markup, `distribution_type`, and per-namespace aggregates (`cost_model_cpu_cost`, `cost_model_gpu_cost`, `infrastructure_cost`, `distributed_cost`, etc.). ROS caches the response per cluster for the ingest cycle.
+
+Since #467 the response also carries `rates[]`: each cost-model row as stored, with `metric`, `cost_type`, `description`/`custom_name`, and either `tiered_rates[]` or `tag_rates`. Two money scales coexist until #461 converts the payload whole — `rates[]` is **integer micro-cents** (`1 USD = 100_000_000`), while `configured_rates` and `namespace_aggregates` stay **float dollars** for the deployed reader. Rates are resolved for `start_date` through the price list Masu applied, so a date no price list covers returns `rates: []` and `configured_rates: {}` rather than an error. `currency` is `null` when the provider has no cost model.
+
+NOTE: The deployed ROS reader does not consume `rates[]` yet (`costdata.ClusterCostData` has no `rates` field); node and PVC savings are still driven by `configured_rates`. `rates[]` is available for the reader half tracked in ros-ocp-backend.
 
 When rates are missing or Masu is unreachable, recommendations still persist but dollar fields are omitted or zero and notification code *25* (`NotifNoCostData`) is appended on container, node, and PVC rows. Fleet `savings-summary` exposes `by_cluster[].has_cost_data: false` when every recommendation in that cluster lacks cost data.
 
