@@ -741,11 +741,14 @@ NOTE: The API uses `idle_state=zombie` which the UI displays as "Abandoned".
 GET /api/cost-management/v1/recommendations/openshift/?filter[idle_state]=zombie,idle
 ----
 
-Filter by stale data (`false` = fresh only (default), `true` = include stale and fresh, `only` = stale rows only). A recommendation is stale when the cluster has not reported within `ROS_STALENESS_THRESHOLD_HOURS` (default 48). Legacy `?stale=` accepted:
+Filter by stale data. `filter[stale]` is tri-state, not a boolean: `false` (default) returns fresh rows only and hides stale ones from the list, the counters and the savings totals; `only` returns the stale rows and nothing else; `true` disables the filter and returns both. `true` does not mean "only stale". Legacy `?stale=` is accepted for all three values.
+
+Two clocks make a row stale. `ROS_CLUSTER_LIVENESS_HOURS` (default **336** = 14 days) is the retention sweep: when every `clusters` row for a cluster reports older than the window, its rows in both recommendation tables are marked stale — a cluster that stopped reporting never runs a cycle, so no per-cycle writer can mark it. `ROS_STALENESS_THRESHOLD_HOURS` (default **48**) is the per-cycle writer, which marks a row whose composite key no longer appears in the cluster's digest. Marking is reversible (the next report clears it) and rows are deleted `ROS_STALE_CLEANUP_DAYS` (default **30**) after the mark, so a decommissioned cluster leaves active figures at day 14 and is reclaimed at day 44.
 
 ----
 GET /api/cost-management/v1/recommendations/openshift/?filter[stale]=false
 GET /api/cost-management/v1/recommendations/openshift/?filter[stale]=only
+GET /api/cost-management/v1/recommendations/openshift/?filter[stale]=true
 ----
 
 Exact-match and exclude filters are supported on `cluster`, `project`, `workload`, and `container`:
@@ -1034,8 +1037,9 @@ Quality defaults to the cost engine when `filter[engine]` is omitted.
 Retention and lifecycle (native engine):
 
 * `ROS_HISTORY_RETENTION_DAYS` (default **90**) — `recommendation_history`, `recommendation_quality`, and `node_gpu_timeslicing_recommendation_history` partitions
-* `ROS_STALE_CLEANUP_DAYS` (default **30**) — delete stale `recommendation_sets` rows (not archived to history first)
-* `ROS_STALENESS_THRESHOLD_HOURS` (default **48**) — mark recommendations stale when the cluster stops reporting
+* `ROS_STALE_CLEANUP_DAYS` (default **30**) — delete stale `recommendation_sets` and `namespace_recommendation_sets` rows (not archived to history first); the clock starts at the mark (`staled_at`), so a cluster is reclaimed 30 days after it went stale
+* `ROS_STALENESS_THRESHOLD_HOURS` (default **48**) — per-cycle mark: a row whose composite key no longer appears in the cluster's digest
+* `ROS_CLUSTER_LIVENESS_HOURS` (default **336** = 14 days) — retention sweep: mark both recommendation tables when every `clusters` row for a cluster reports older than this window. This is the clock that catches a cluster which stopped reporting entirely, since such a cluster never runs a cycle
 
 Gap prevention: history and quality writes are **non-fatal**. If analytics fail (DB error, timeout), container recommendations still persist; the processor logs `pipelineDegraded` and continues. Namespace history retries on transient Kafka errors; permanent errors skip history but keep recommendations.
 
@@ -1086,7 +1090,7 @@ List filters:
 * `filter[cluster]` — cluster UUID (include mode by default; `filter[exact:cluster]`, `exclude[cluster]` for exact/exclude). Legacy flat `cluster` / `cluster_uuid` accepted.
 * `filter[project]` — namespace name (comma-separated OR). `filter[namespace]` is an alias for `filter[project]`; flat `project` / `namespace` also accepted.
 * `filter[idle_state]` — `active`, `idle`, or `zombie` (comma-separated values are ORed). Aggregated from child container/GPU rows.
-* `filter[stale]` — `false` (default, fresh only), `true` (include stale and fresh), or `only` (stale rows only). Stale when the cluster has not reported within `ROS_STALENESS_THRESHOLD_HOURS` (default 48). Legacy `?stale=` accepted.
+* `filter[stale]` — tri-state: `false` (default, fresh only), `only` (stale rows only), `true` (no filter, both). Stale when the cluster stops reporting past `ROS_CLUSTER_LIVENESS_HOURS` (default 14 days) or a cycle stops refreshing the row past `ROS_STALENESS_THRESHOLD_HOURS` (default 48). Legacy `?stale=` accepted for all three values.
 * `filter[engine]` — `cost` or `performance`; omits the other engine from `recommendation_engines` on each item (legacy `?engine=` also accepted).
 * `filter[term]` — `short`, `medium`, `long` or `short_term`, `medium_term`, `long_term`; limits nested `recommendation_terms` in each list item (legacy `?term=` also accepted). When omitted, list items default to `short_term` cost only.
 * `filter[tag:<key>]` — tag-based filtering when `ROS_TAGS_ENABLED=true` (tags synced from Koku). Multiple `filter[tag:*]` keys are ANDed; comma-separated values within one key are ORed. See container filtering above for full syntax.

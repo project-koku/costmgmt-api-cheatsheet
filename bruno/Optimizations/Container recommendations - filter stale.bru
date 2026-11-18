@@ -1,0 +1,53 @@
+meta {
+  name: Container recommendations - filter stale
+  type: http
+  seq: 243
+}
+
+get {
+  url: {{baseURL}}/recommendations/openshift?filter[stale]=only&limit=20&offset=0
+  body: none
+  auth: inherit
+}
+
+params:query {
+  filter[stale]: only
+  limit: 20
+  offset: 0
+}
+
+headers {
+  x-rh-identity: {{xRhIdentity}}
+}
+
+docs {
+  filter[stale] — three states, not a boolean:
+    false (default) — fresh rows only; stale rows are hidden from the list,
+                      the counters and the savings totals.
+    only            — the hidden rows, and nothing else. This is the escape
+                      hatch for a cluster that disappeared from the default
+                      view.
+    true            — no staleness filter at all (fresh and stale together).
+                      Despite the name, true does NOT mean "only stale".
+
+  A row becomes stale on either of two clocks:
+    ROS_CLUSTER_LIVENESS_HOURS (default 336 = 14 days) — the retention sweep
+      marks both recommendation tables when every clusters row for that
+      cluster reports older than the window. This is what catches a cluster
+      that stopped reporting: it never runs its own cycle, so no per-cycle
+      writer could mark it.
+    ROS_STALENESS_THRESHOLD_HOURS (default 48) — the per-cycle writer marks a
+      row whose composite key no longer appears in the cluster's digest.
+
+  Marking is reversible: the next report clears stale, so a cluster that comes
+  back returns to the default list on its own. Rows are deleted
+  ROS_STALE_CLEANUP_DAYS (default 30) after the mark, so a decommissioned
+  cluster leaves active figures at day 14 and is reclaimed at day 44.
+
+  Legacy flat ?stale= is accepted for all three values.
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

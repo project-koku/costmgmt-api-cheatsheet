@@ -1323,12 +1323,16 @@ The API uses <code>idle_state=zombie</code> which the UI displays as "Abandoned"
 </div>
 </div>
 <div class="paragraph">
-<p>Filter by stale data (<code>false</code> = fresh only (default), <code>true</code> = include stale and fresh, <code>only</code> = stale rows only). A recommendation is stale when the cluster has not reported within <code>ROS_STALENESS_THRESHOLD_HOURS</code> (default 48). Legacy <code>?stale=</code> accepted:</p>
+<p>Filter by stale data. <code>filter[stale]</code> is tri-state, not a boolean: <code>false</code> (default) returns fresh rows only and hides stale ones from the list, the counters and the savings totals; <code>only</code> returns the stale rows and nothing else; <code>true</code> disables the filter and returns both. <code>true</code> does not mean "only stale". Legacy <code>?stale=</code> is accepted for all three values.</p>
+</div>
+<div class="paragraph">
+<p>Two clocks make a row stale. <code>ROS_CLUSTER_LIVENESS_HOURS</code> (default <strong>336</strong> = 14 days) is the retention sweep: when every <code>clusters</code> row for a cluster reports older than the window, its rows in both recommendation tables are marked stale — a cluster that stopped reporting never runs a cycle, so no per-cycle writer can mark it. <code>ROS_STALENESS_THRESHOLD_HOURS</code> (default <strong>48</strong>) is the per-cycle writer, which marks a row whose composite key no longer appears in the cluster&#8217;s digest. Marking is reversible (the next report clears it) and rows are deleted <code>ROS_STALE_CLEANUP_DAYS</code> (default <strong>30</strong>) after the mark, so a decommissioned cluster leaves active figures at day 14 and is reclaimed at day 44.</p>
 </div>
 <div class="listingblock">
 <div class="content">
 <pre>GET /api/cost-management/v1/recommendations/openshift/?filter[stale]=false
-GET /api/cost-management/v1/recommendations/openshift/?filter[stale]=only</pre>
+GET /api/cost-management/v1/recommendations/openshift/?filter[stale]=only
+GET /api/cost-management/v1/recommendations/openshift/?filter[stale]=true</pre>
 </div>
 </div>
 <div class="paragraph">
@@ -1783,10 +1787,13 @@ GET /api/cost-management/v1/recommendations/openshift/quality/snapshots?order_by
 <p><code>ROS_HISTORY_RETENTION_DAYS</code> (default <strong>90</strong>) — <code>recommendation_history</code>, <code>recommendation_quality</code>, and <code>node_gpu_timeslicing_recommendation_history</code> partitions</p>
 </li>
 <li>
-<p><code>ROS_STALE_CLEANUP_DAYS</code> (default <strong>30</strong>) — delete stale <code>recommendation_sets</code> rows (not archived to history first)</p>
+<p><code>ROS_STALE_CLEANUP_DAYS</code> (default <strong>30</strong>) — delete stale <code>recommendation_sets</code> and <code>namespace_recommendation_sets</code> rows (not archived to history first); the clock starts at the mark (<code>staled_at</code>), so a cluster is reclaimed 30 days after it went stale</p>
 </li>
 <li>
-<p><code>ROS_STALENESS_THRESHOLD_HOURS</code> (default <strong>48</strong>) — mark recommendations stale when the cluster stops reporting</p>
+<p><code>ROS_STALENESS_THRESHOLD_HOURS</code> (default <strong>48</strong>) — per-cycle mark: a row whose composite key no longer appears in the cluster&#8217;s digest</p>
+</li>
+<li>
+<p><code>ROS_CLUSTER_LIVENESS_HOURS</code> (default <strong>336</strong> = 14 days) — retention sweep: mark both recommendation tables when every <code>clusters</code> row for a cluster reports older than this window. This is the clock that catches a cluster which stopped reporting entirely, since such a cluster never runs a cycle</p>
 </li>
 </ul>
 </div>
@@ -1870,7 +1877,7 @@ GET /api/cost-management/v1/recommendations/openshift/namespaces?format=csv</pre
 <p><code>filter[idle_state]</code> — <code>active</code>, <code>idle</code>, or <code>zombie</code> (comma-separated values are ORed). Aggregated from child container/GPU rows.</p>
 </li>
 <li>
-<p><code>filter[stale]</code> — <code>false</code> (default, fresh only), <code>true</code> (include stale and fresh), or <code>only</code> (stale rows only). Stale when the cluster has not reported within <code>ROS_STALENESS_THRESHOLD_HOURS</code> (default 48). Legacy <code>?stale=</code> accepted.</p>
+<p><code>filter[stale]</code> — tri-state: <code>false</code> (default, fresh only), <code>only</code> (stale rows only), <code>true</code> (no filter, both). Stale when the cluster stops reporting past <code>ROS_CLUSTER_LIVENESS_HOURS</code> (default 14 days) or a cycle stops refreshing the row past <code>ROS_STALENESS_THRESHOLD_HOURS</code> (default 48). Legacy <code>?stale=</code> accepted for all three values.</p>
 </li>
 <li>
 <p><code>filter[engine]</code> — <code>cost</code> or <code>performance</code>; omits the other engine from <code>recommendation_engines</code> on each item (legacy <code>?engine=</code> also accepted).</p>
@@ -5132,7 +5139,7 @@ GET /api/cost-management/v1/reports/aws/costs/?group_by[account]=*&amp;exclude[a
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-11-02 17:52:01 +0100
+Last updated 2026-11-18 10:50:48 +0100
 </div>
 </div>
 </body>

@@ -21,8 +21,26 @@ headers {
 }
 
 docs {
-  filter[stale] — only rows whose cluster has not reported within ROS_STALENESS_THRESHOLD_HOURS (default 48).
-  Other values: false (default, exclude stale), true (include stale and fresh).
+  filter[stale] — three states, not a boolean:
+    false (default) — fresh namespaces only; stale ones are hidden from the
+                      list, the counters and the savings totals.
+    only            — the hidden namespaces, and nothing else.
+    true            — no staleness filter (fresh and stale together). Despite
+                      the name, true does NOT mean "only stale".
+
+  A namespace becomes stale on either of two clocks:
+    ROS_CLUSTER_LIVENESS_HOURS (default 336 = 14 days) — the retention sweep
+      marks both recommendation tables when every clusters row for that
+      cluster reports older than the window. This is what catches a cluster
+      that stopped reporting.
+    ROS_STALENESS_THRESHOLD_HOURS (default 48) — the per-cycle writer marks a
+      row whose composite key no longer appears in the cluster's digest.
+
+  Marking is reversible: the next report clears stale. Rows are deleted
+  ROS_STALE_CLEANUP_DAYS (default 30) after the mark, so a decommissioned
+  cluster leaves active figures at day 14 and is reclaimed at day 44.
+
+  Legacy flat ?stale= is accepted for all three values.
 }
 
 settings {
